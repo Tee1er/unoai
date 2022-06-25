@@ -1,4 +1,4 @@
-module changeme
+module unoai
 
 go 1.17
 
