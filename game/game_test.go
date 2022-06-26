@@ -7,30 +7,34 @@ import (
 )
 
 func TestMakeGame(t *testing.T) {
-	p := []Player{RandomPlayer(), RandomPlayer()}
+	p := []Player{RandomPlayer(false), RandomPlayer(false)}
 	g := MakeGame(p)
 
-	LogGameState(&g, t)
 	if len(g.Players) != 2 {
 		t.Errorf("Expected 2 players, got %d", len(g.Players))
 	}
-	if len(g.DrawDeck) != 108 {
-		t.Errorf("Expected 108 cards in draw deck, got %d", len(g.DrawDeck))
+	numCards := 108 - len(p)*7 - 1
+	if len(g.DrawDeck) != numCards {
+		t.Errorf("Expected %d cards in draw deck, got %d", numCards, len(g.DrawDeck))
 	}
-	if len(g.Discard) != 0 {
-		t.Errorf("Expected 0 cards in discard, got %d", len(g.Discard))
+	if len(g.Discard) != 1 {
+		t.Log(g.Discard)
+		t.Errorf("Expected 1 card in discard, got %d", len(g.Discard))
 	}
 }
 
-// Generates a player with a random deck (only for testing)
-// Player name is "Test Player" & hand will consist only of cards from 0-9 (no wilds, skips, etc)
-func RandomPlayer() Player {
+// Generates a player with a random name and empty deck.
+// Optionally, if generateDeck is true hand will consist only of cards from 0-9 (no wilds, skips, etc)
+func RandomPlayer(generateDeck bool) Player {
 	hand := []Card{}
-	for i := 0; i < 7; i++ {
-		hand = append(hand, Card{Color: CardColor(rand.Intn(4)), Value: CardType(rand.Intn(9))})
+	if generateDeck {
+		for i := 0; i < 7; i++ {
+			hand = append(hand, Card{Color: CardColor(rand.Intn(4)), Value: CardType(rand.Intn(9))})
+		}
 	}
+
 	p := Player{
-		Name: "Test Player",
+		Name: fmt.Sprintf("Test Player %d", rand.Intn(1000)),
 		Hand: hand,
 	}
 	return p
@@ -39,7 +43,7 @@ func RandomPlayer() Player {
 // Pretty-prints the game state, for debugging.
 // Requires the testing.T struct in order to log to the test output.
 func LogGameState(g *Game, t *testing.T) {
-	s := fmt.Sprintf("Game:\n")
+	s := "Game:\n"
 	for i := 0; i < len(g.Players); i++ {
 		t.Log(g.Players[i])
 	}
