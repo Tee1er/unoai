@@ -104,12 +104,20 @@ func (g *Game) Draw(n int) []Card {
 // Plays a turn created with MakeTurn.
 // Returns true if the turn was successful, false otherwise.
 func (g *Game) PlayTurn(playerIndex int, t Turn) bool {
-	p := g.Players[playerIndex]
+	p := &g.Players[playerIndex]
+
+	// If the card is a reverse, reverse the direction of the game
+	if t.Card.Value == Reverse {
+		g.TurnIncr = -1
+	}
+
+	g.TurnCtr += g.TurnIncr
+	// fmt.Println("Turn:", g.TurnCtr)
 
 	// If the player is drawing, give them a card and end their turn.
 	if t.Draw {
 		p.Hand = append(p.Hand, g.Draw(1)...)
-		g.TurnCtr += g.TurnIncr
+
 		return true
 	}
 
@@ -124,14 +132,9 @@ func (g *Game) PlayTurn(playerIndex int, t Turn) bool {
 	// Add the card to the discard pile
 	g.Discard = append([]Card{t.Card}, g.Discard...)
 
-	// If the card is a reverse, reverse the direction of the game
-	if t.Card.Value == Reverse {
-		g.TurnIncr = -1
-	}
-
 	// If the card is a skip, skip the next player
 	if t.Card.Value == Skip {
-		g.TurnCtr += g.TurnIncr * 2
+		g.TurnCtr += g.TurnIncr
 	}
 
 	// If the card is a draw two, draw two cards for the next player
@@ -140,7 +143,7 @@ func (g *Game) PlayTurn(playerIndex int, t Turn) bool {
 		nextPlayerIndex := (playerIndex + g.TurnIncr) % len(g.Players)
 		g.Players[nextPlayerIndex].Hand = append(g.Players[nextPlayerIndex].Hand, g.Draw(2)...)
 		// Skip the next player's turn
-		g.TurnCtr += g.TurnIncr * 2
+		g.TurnCtr += g.TurnIncr
 	}
 
 	// Wild cards
@@ -157,7 +160,7 @@ func (g *Game) PlayTurn(playerIndex int, t Turn) bool {
 		nextPlayerIndex := (playerIndex + g.TurnIncr) % len(g.Players)
 		g.Players[nextPlayerIndex].Hand = append(g.Players[nextPlayerIndex].Hand, g.Draw(4)...)
 		// Skip the next player's turn
-		g.TurnCtr += g.TurnIncr * 2
+		g.TurnCtr += g.TurnIncr
 	}
 
 	return true

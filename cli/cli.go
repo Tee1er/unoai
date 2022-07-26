@@ -5,6 +5,9 @@ import (
 	"unoai/game"
 
 	"github.com/fatih/color"
+	"github.com/logrusorgru/aurora"
+
+	"strconv"
 )
 
 func StartGame() {
@@ -15,9 +18,53 @@ func StartGame() {
 	// Create a new game
 	g := game.MakeGame(players)
 
-	// Display game
-	DisplayGame(g)
+	fmt.Println(aurora.Green("Starting game ..."))
 
+	// Display game
+	for {
+		DisplayGame(g)
+		InputTurn(&g)
+	}
+
+}
+
+// Get user input for a turn
+func InputTurn(g *game.Game) {
+	currentPlayer := g.Players[g.TurnCtr%len(g.Players)]
+	// Ask for turn
+	fmt.Printf("%s, input your turn:\n", aurora.Magenta(currentPlayer.Name))
+	// Get card the user wishes to play
+	fmt.Println("Enter a card number to play, or press <Enter> to draw a card.")
+	input := ""
+	fmt.Scanln(&input)
+
+	// If user pressed enter, draw a card
+	if input == "" {
+		c := game.Card{
+			Value: game.Zero,
+			Color: game.None,
+		}
+		turn := game.MakeTurn(c, true)
+		if g.PlayTurn(g.TurnCtr%len(g.Players), turn) {
+			fmt.Println(aurora.Green("-- Draw successful."))
+		} else {
+			fmt.Println(aurora.Red("-- Draw unsuccessful."))
+		}
+	} else {
+		cardIndex, err := strconv.Atoi(input)
+		if cardIndex < 1 || cardIndex > len(currentPlayer.Hand) || err != nil {
+			fmt.Println(aurora.Red("-- Invalid card / turn."))
+			return
+		}
+		c := currentPlayer.Hand[cardIndex-1]
+		turn := game.MakeTurn(c, false)
+		if g.PlayTurn(g.TurnCtr%len(g.Players), turn) {
+			fmt.Println(aurora.Green("-- Play successful."))
+		} else {
+			fmt.Println(aurora.Red("-- Play unsuccessful."))
+		}
+
+	}
 }
 
 func DisplayGame(g game.Game) {
@@ -80,6 +127,8 @@ func DisplayGame(g game.Game) {
 
 		color.Unset()
 	}
+
+	color.Unset()
 }
 
 func GetPlayerInfo() []string {
