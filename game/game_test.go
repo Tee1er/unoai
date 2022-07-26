@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestMakeGame(t *testing.T) {
+func TestMakeGame(t *testing.T) Game {
 	p := []Player{RandomPlayer(false), RandomPlayer(false)}
 	g := MakeGame(p)
 
@@ -21,6 +21,8 @@ func TestMakeGame(t *testing.T) {
 		t.Log(g.Discard)
 		t.Errorf("Expected 1 card in discard, got %d", len(g.Discard))
 	}
+
+	return g
 }
 
 // Generates a player with a random name and empty deck.

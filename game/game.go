@@ -94,7 +94,7 @@ func (g *Game) Deal() {
 func (g *Game) Draw(n int) []Card {
 	cards := make([]Card, 0, n)
 	for i := 0; i < n; i++ {
-		fmt.Printf("Drawing card: %v", g.DrawDeck[0])
+		// fmt.Printf("Drawing card: %v", g.DrawDeck[0])
 		cards = append(cards, g.DrawDeck[0])
 		g.DrawDeck = g.DrawDeck[1:]
 	}
@@ -102,14 +102,15 @@ func (g *Game) Draw(n int) []Card {
 }
 
 // Plays a turn created with MakeTurn.
-func (g *Game) PlayTurn(playerIndex int, t Turn) {
+// Returns true if the turn was successful, false otherwise.
+func (g *Game) PlayTurn(playerIndex int, t Turn) bool {
 	p := g.Players[playerIndex]
 
 	// If the player is drawing, give them a card and end their turn.
 	if t.Draw {
 		p.Hand = append(p.Hand, g.Draw(1)...)
 		g.TurnCtr += g.TurnIncr
-		return
+		return true
 	}
 
 	// Find & remove the card from the player's hand
@@ -135,9 +136,32 @@ func (g *Game) PlayTurn(playerIndex int, t Turn) {
 
 	// If the card is a draw two, draw two cards for the next player
 	if t.Card.Value == DrawTwo {
-		// nextPlayerHand := &g.Players[(playerIndex+g.TurnIncr)%len(g.Players)].Hand
-		// // nextPlayerHand = append(nextPlayerHand, g.Draw(2)...)
+		// Add two cards to next player's deck
+		nextPlayerIndex := (playerIndex + g.TurnIncr) % len(g.Players)
+		g.Players[nextPlayerIndex].Hand = append(g.Players[nextPlayerIndex].Hand, g.Draw(2)...)
+		// Skip the next player's turn
+		g.TurnCtr += g.TurnIncr * 2
 	}
+
+	// Wild cards
+	if t.Card.Value == Wild || t.Card.Value == WildDrawFour {
+		if t.Card.Color == None {
+			// Invalid wild card
+			// TODO: handle this better and improve validation systems for turns
+			return false
+		}
+	}
+	// +4 cards
+	if t.Card.Value == WildDrawFour {
+		// Draw four cards for the next player
+		nextPlayerIndex := (playerIndex + g.TurnIncr) % len(g.Players)
+		g.Players[nextPlayerIndex].Hand = append(g.Players[nextPlayerIndex].Hand, g.Draw(4)...)
+		// Skip the next player's turn
+		g.TurnCtr += g.TurnIncr * 2
+	}
+
+	return true
+
 }
 
 type Player struct {

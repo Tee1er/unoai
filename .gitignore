@@ -4,3 +4,5 @@ bin
 dist
 package-lock.json
 package.json.md5
+windows
+darwin
