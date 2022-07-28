@@ -3,9 +3,10 @@ package game
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"time"
+
+	"github.com/logrusorgru/aurora"
 )
 
 type Game struct {
@@ -167,6 +168,25 @@ func (g *Game) PlayTurn(playerIndex int, t Turn) bool {
 
 }
 
+// Checks if making a certain turn is valid
+// Returns bool indicating if the turn is valid
+// + string indicating reason why turn is invalid
+func (g *Game) ValidateTurn(t Turn) (bool, string) {
+
+	// Check if the card matches the top of the discard pile
+	p := g.Discard[0]
+	if (t.Card.Color != p.Color && t.Card.Value != p.Value && t.Card.Value <= 12) && !t.Draw {
+		return false, "Card does not match top of discard pile"
+	}
+
+	// if the card is a wild & has no color set, it's invalid
+	if (t.Card.Value == WildDrawFour || t.Card.Value == Wild) && t.Card.Color == None {
+		return false, "Color not selected for wild card"
+	}
+
+	return true, ""
+}
+
 type Player struct {
 	Name string
 	Hand []Card
@@ -184,19 +204,7 @@ func MakeTurn(card Card, draw bool) Turn {
 		Card: card,
 		Draw: draw,
 	}
-	if !t.IsValid() {
-		log.Fatal("Invalid turn")
-	}
 	return t
-}
-
-// Checks if the turn is valid
-func (t Turn) IsValid() bool {
-	// if the card is a wild & has no color set, it's invalid
-	if (t.Card.Value == WildDrawFour || t.Card.Value == Wild) && t.Card.Color == None {
-		return false
-	}
-	return true
 }
 
 type Card struct {
@@ -206,6 +214,41 @@ type Card struct {
 
 func (c Card) String() string {
 	return fmt.Sprintf("%s %s", []string{"Red", "Green", "Blue", "Yellow", "None"}[c.Color], []string{"Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "DrawTwo", "Reverse", "Skip", "Wild", "WildDrawFour"}[c.Value])
+}
+
+func (c Card) ShortColorString() string {
+	var v string
+
+	if c.Value <= 9 {
+		// # cards
+		v = fmt.Sprintf("%d", c.Value)
+	} else if c.Value == Skip {
+		// Skip card
+		v = "S"
+	} else if c.Value == Reverse {
+		v = "R"
+	} else if c.Value == DrawTwo {
+		v = "+2"
+	} else if c.Value == Wild {
+		v = "W"
+	} else if c.Value == WildDrawFour {
+		v = "+4"
+	}
+
+	var s aurora.Value
+	switch c.Color {
+	case Red:
+		s = aurora.Red(v)
+	case Green:
+		s = aurora.Green(v)
+	case Blue:
+		s = aurora.Blue(v)
+	case Yellow:
+		s = aurora.Brown(v)
+	}
+
+	return fmt.Sprintf("[%s]", s)
+
 }
 
 // enum for card types

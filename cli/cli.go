@@ -2,15 +2,20 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"unoai/game"
 
-	"github.com/fatih/color"
-	"github.com/logrusorgru/aurora"
+	"os/signal"
+	"syscall"
 
-	"strconv"
+	"github.com/logrusorgru/aurora"
 )
 
 func StartGame() {
+
+	// Handle keyboard interrupt <Ctrl+C>
+	CloseHandler()
 
 	// Create players
 	players := CreatePlayers()
@@ -22,6 +27,7 @@ func StartGame() {
 
 	// Display game
 	for {
+		fmt.Println()
 		DisplayGame(g)
 		InputTurn(&g)
 	}
@@ -35,33 +41,49 @@ func InputTurn(g *game.Game) {
 	fmt.Printf("%s, input your turn:\n", aurora.Magenta(currentPlayer.Name))
 	// Get card the user wishes to play
 	fmt.Println("Enter a card number to play, or press <Enter> to draw a card.")
-	input := ""
-	fmt.Scanln(&input)
 
-	// If user pressed enter, draw a card
-	if input == "" {
-		c := game.Card{
-			Value: game.Zero,
-			Color: game.None,
-		}
-		turn := game.MakeTurn(c, true)
-		if g.PlayTurn(g.TurnCtr%len(g.Players), turn) {
-			fmt.Println(aurora.Green("-- Draw successful."))
+	// Repeat until valid input
+	for {
+
+		// Scan for input
+		input := ""
+		fmt.Scanln(&input)
+
+		var t game.Turn
+
+		if input == "" {
+			c := game.Card{
+				Value: game.Zero,
+				Color: game.None,
+			}
+
+			t = game.MakeTurn(c, true)
 		} else {
-			fmt.Println(aurora.Red("-- Draw unsuccessful."))
+			cardIndex, err := strconv.Atoi(input)
+			if cardIndex < 1 || cardIndex > len(currentPlayer.Hand) || err != nil {
+				fmt.Println(aurora.Red("-- Invalid card / turn."))
+				continue
+			}
+			c := currentPlayer.Hand[cardIndex-1]
+			t = game.MakeTurn(c, false)
 		}
-	} else {
-		cardIndex, err := strconv.Atoi(input)
-		if cardIndex < 1 || cardIndex > len(currentPlayer.Hand) || err != nil {
-			fmt.Println(aurora.Red("-- Invalid card / turn."))
-			return
+
+		valid, errMsg := g.ValidateTurn(t)
+		// If invalid turn, print error message and try again
+		if !valid {
+			fmt.Printf("-- Invalid turn: %s\n", aurora.Red(errMsg))
+			continue
 		}
-		c := currentPlayer.Hand[cardIndex-1]
-		turn := game.MakeTurn(c, false)
-		if g.PlayTurn(g.TurnCtr%len(g.Players), turn) {
+
+		success := g.PlayTurn(g.TurnCtr%len(g.Players), t)
+
+		// If play successful, break and go to next player. If not, try again.
+		if success {
 			fmt.Println(aurora.Green("-- Play successful."))
+			break
 		} else {
 			fmt.Println(aurora.Red("-- Play unsuccessful."))
+			continue
 		}
 
 	}
@@ -78,38 +100,7 @@ func DisplayGame(g game.Game) {
 			for j := 0; j < len(g.Players[i].Hand); j++ {
 
 				c := g.Players[i].Hand[j]
-				str := ""
-
-				// Color card
-				switch c.Color {
-				case game.Red:
-					color.Set(color.FgRed)
-				case game.Blue:
-					color.Set(color.FgBlue)
-				case game.Green:
-					color.Set(color.FgGreen)
-				case game.Yellow:
-					color.Set(color.FgYellow)
-				case game.None:
-					color.Set(color.FgBlack)
-					color.Set(color.BgHiWhite)
-				}
-
-				if c.Value <= 9 {
-					// # cards
-					str = fmt.Sprintf("%d", c.Value)
-				} else if c.Value == game.Skip {
-					// Skip card
-					str = "S"
-				} else if c.Value == game.Reverse {
-					str = "R"
-				} else if c.Value == game.DrawTwo {
-					str = "+2"
-				} else if c.Value == game.Wild {
-					str = "W"
-				} else if c.Value == game.WildDrawFour {
-					str = "+4"
-				}
+				str := c.ShortColorString()
 
 				fmt.Printf("%s ", str)
 			}
@@ -124,16 +115,14 @@ func DisplayGame(g game.Game) {
 			fmt.Printf("%s ", handStr)
 			fmt.Printf("\n")
 		}
-
-		color.Unset()
 	}
-
-	color.Unset()
+	// Display last card played in discard pile
+	fmt.Printf("%s: %s\n", aurora.Red("Discard"), g.Discard[0].ShortColorString())
 }
 
 func GetPlayerInfo() []string {
 	// Ask for # of players
-	color.Blue("How many players?")
+	fmt.Println("How many players?")
 	numPlayers := 0
 	fmt.Scanln(&numPlayers)
 
@@ -141,7 +130,7 @@ func GetPlayerInfo() []string {
 
 	// Ask for player names
 	for i := 0; i < numPlayers; i++ {
-		color.Blue("Player %d, what is your name?", i+1)
+		fmt.Printf("Player %d, what is your name?\n", aurora.Magenta(i+1))
 		name := ""
 		fmt.Scanln(&name)
 		playerNames[i] = name
@@ -165,4 +154,16 @@ func CreatePlayers() []game.Player {
 	}
 
 	return players
+}
+
+// Handle keyboard interrupt <Ctrl+C>
+func CloseHandler() {
+	sigs := make(chan os.Signal)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		<-sigs
+		fmt.Println("\nExiting...")
+		os.Exit(0)
+	}()
 }
